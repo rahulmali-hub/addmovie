@@ -11,6 +11,9 @@ const movieRoutes = require('./routes/movieRoutes');
 
 const app = express();
 app.use(cors());
+app.use(cors({
+  origin: 'https://addmoviefrontend.vercel.app', // Replace with your frontend URL
+}));
 app.use(bodyParser.json());
 
 // Routes
