@@ -2,6 +2,28 @@ const express = require("express");
 const Movie = require("../model/movie");
 const { authenticate, authorize } = require("../middlware/auth");
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'public/images/'); // 
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}_${file.originalname}`); 
+  },
+});
+
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed'), false);
+  }
+};
+
+// Initialize Multer
+const upload = multer({ storage, fileFilter });
 
 // Get all movies
 router.get("/movies", async (req, res) => {
@@ -32,38 +54,60 @@ router.get("/movies/:name", async (req, res) => {
   }
 });
 
-// Add a new movie (Admin only)
-router.post("/post", authenticate, authorize("Admin"), async (req, res) => {
-  try {
-    // console.log(req.body);  // Log the request body
-    const movie = new Movie({
-      _id: req.body.movieId, // Set _id to movieId manually
-      movieId: req.body.movieId, // This can be the same or different
-      name: req.body.name,
-      rating: req.body.rating,
-      releaseDate: req.body.releaseDate,
-      duration: req.body.duration,
-    });
-    await movie.save();
-    res.status(201).send({ message: "Movie added", movie });
-  } catch (error) {
-    console.error(error); // Log the error for better debugging
-    res.status(400).send({ message: "Error adding movie", error });
-  }
-});
+// Post data //
 
-// Edit a movie (Admin only)
-router.put(
-  "/movies/:id",
+router.post(
+  "/post",
   authenticate,
-  authorize("Admin"),
+  authorize("admin"),
+  upload.single('image'),
   async (req, res) => {
     try {
-      // Use movieId (req.params.id) to find the movie, and update it
+      const { movieId, name, rating, releaseDate, duration } = req.body;
+      const image = req.file ? req.file.path : null; // Save the file path
+
+      const movie = new Movie({
+        _id: movieId,
+        movieId,
+        name,
+        rating,
+        releaseDate,
+        duration,
+        image,
+      });
+
+      await movie.save();
+      res.status(201).send({ message: "Movie added", movie });
+    } catch (error) {
+      console.error(error);
+      res.status(400).send({ message: "Error adding movie", error });
+    }
+  }
+);
+
+
+// Edit a movie (Admin only)
+
+router.put(
+  "/movies/:movieId",
+  authenticate,
+  authorize("admin"),
+  upload.single('image'), // Assuming you are using multer for handling file uploads
+  async (req, res) => {
+    try {
+      const { movieId } = req.params;
+      const updateData = { ...req.body }; // Get the updated data from req.body
+
+      // Check if a new image has been uploaded and update the image field if necessary
+      if (req.file) {
+        updateData.image = `public/images/${req.file.filename}`; // Assuming your image path is saved like this
+      }
+
+      // Find and update the movie by movieId
       const movie = await Movie.findOneAndUpdate(
-        { movieId: req.params.id }, // Find movie using movieId (from URL params)
-        req.body, // Data to update
-        { new: true } // Return the updated movie
+        { movieId }, 
+        updateData,  
+        { new: true } 
       );
 
       if (!movie) {
@@ -72,16 +116,19 @@ router.put(
 
       res.send({ message: "Movie updated", movie });
     } catch (error) {
-      res.status(400).send({ message: "Error updating movie", error });
+      console.error(error);
+      res.status(400).send({ message: "Error updating movie", error: error.message });
     }
   }
 );
 
+
 // Delete a movie (Admin only)
+
 router.delete(
   "/movies/:movieId",
   authenticate,
-  authorize("Admin"),
+  authorize("admin"),
   async (req, res) => {
     try {
       await Movie.findByIdAndDelete(req.params.movieId);
