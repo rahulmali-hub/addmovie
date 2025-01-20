@@ -16,7 +16,7 @@ app.use(bodyParser.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/', movieRoutes);
-app.use('/uploads', express.static('uploads'));
+app.use('/images', express.static('images'));
 
 
 // Database Connection

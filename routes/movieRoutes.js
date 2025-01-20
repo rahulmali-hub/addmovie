@@ -7,7 +7,7 @@ const path = require('path');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'public/images/'); // 
+    cb(null, 'images/'); // 
   },
   filename: (req, file, cb) => {
     cb(null, `${Date.now()}_${file.originalname}`); 
@@ -100,7 +100,7 @@ router.put(
 
       // Check if a new image has been uploaded and update the image field if necessary
       if (req.file) {
-        updateData.image = `public/images/${req.file.filename}`; // Assuming your image path is saved like this
+        updateData.image = `images/${req.file.filename}`; // Assuming your image path is saved like this
       }
 
       // Find and update the movie by movieId
